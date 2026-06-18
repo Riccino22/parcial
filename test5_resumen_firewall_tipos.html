@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Test — Resumen: Tipos de Firewall</title>
+<style>
+  :root {
+    --bg: #0f172a; --panel: #1e293b; --panel-2: #273449; --text: #e2e8f0;
+    --muted: #94a3b8; --accent: #38bdf8; --accent-2: #0ea5e9;
+    --ok: #22c55e; --err: #ef4444; --warn: #f59e0b; --border: #334155;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; background:var(--bg); color:var(--text); line-height:1.5; }
+  header { padding:16px 24px; background:var(--panel); border-bottom:1px solid var(--border); position:sticky; top:0; z-index:10; }
+  header h1 { margin:0 0 6px 0; font-size:18px; color:var(--accent); }
+  .topbar { display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; }
+  .stats { font-size:14px; color:var(--muted); } .stats b { color:var(--text); }
+  main { max-width:920px; margin:24px auto; padding:0 16px 80px; }
+  .controls { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:20px; }
+  button { background:var(--panel); color:var(--text); border:1px solid var(--border); padding:8px 14px; border-radius:8px; cursor:pointer; font-size:14px; transition:background .15s,border-color .15s; }
+  button:hover { background:var(--panel-2); }
+  button.primary { background:var(--accent-2); border-color:var(--accent-2); color:white; font-weight:600; }
+  button.primary:hover { background:var(--accent); }
+  button.danger { background:transparent; border-color:var(--err); color:var(--err); }
+  select { background:var(--panel); color:var(--text); border:1px solid var(--border); padding:8px 12px; border-radius:8px; font-size:14px; }
+  .question { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:18px 20px; margin-bottom:16px; }
+  .question h3 { margin:0 0 8px 0; font-size:15px; color:var(--muted); font-weight:500; }
+  .question .prompt { font-size:15px; margin-bottom:12px; }
+  .question pre { background:#0b1220; border:1px solid var(--border); padding:10px 12px; border-radius:8px; overflow-x:auto; font-size:13px; margin:8px 0 14px; }
+  .options { display:flex; flex-direction:column; gap:8px; }
+  .opt { display:flex; gap:10px; align-items:flex-start; padding:10px 12px; border:1px solid var(--border); background:var(--panel-2); border-radius:8px; cursor:pointer; transition:background .15s,border-color .15s; }
+  .opt:hover { background:#2f3e57; }
+  .opt input { margin-top:3px; accent-color:var(--accent); }
+  .opt .letter { font-weight:bold; color:var(--accent); min-width:18px; }
+  .opt.correct { background:rgba(34,197,94,.15); border-color:var(--ok); }
+  .opt.incorrect { background:rgba(239,68,68,.15); border-color:var(--err); }
+  .feedback { margin-top:12px; padding:10px 12px; border-radius:8px; font-size:14px; display:none; }
+  .feedback.show { display:block; }
+  .feedback.ok { background:rgba(34,197,94,.1); border:1px solid var(--ok); color:#bbf7d0; }
+  .feedback.err { background:rgba(239,68,68,.1); border:1px solid var(--err); color:#fecaca; }
+  .section-divider { margin:28px 0 14px; padding:10px 14px; background:linear-gradient(90deg,var(--accent-2),transparent); border-radius:8px; font-weight:600; color:white; }
+  .progress-bar { height:6px; background:var(--panel-2); border-radius:3px; overflow:hidden; margin-top:8px; }
+  .progress-fill { height:100%; background:var(--accent); transition:width .3s; }
+  #result { background:var(--panel); border:2px solid var(--accent); border-radius:12px; padding:24px; margin-bottom:20px; display:none; }
+  #result.show { display:block; } #result h2 { margin-top:0; color:var(--accent); }
+  .score-big { font-size:42px; font-weight:bold; }
+  .score-level { font-size:18px; margin-top:8px; }
+  .level-elite { color:var(--ok); } .level-good { color:var(--accent); } .level-mid { color:var(--warn); } .level-bad { color:var(--err); }
+  .by-section { margin-top:16px; display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px; }
+  .sec-card { background:var(--panel-2); padding:10px 12px; border-radius:8px; border:1px solid var(--border); font-size:14px; }
+  .sec-card .sec-name { color:var(--muted); font-size:12px; } .sec-card .sec-score { font-size:18px; font-weight:bold; margin-top:4px; }
+  footer { text-align:center; color:var(--muted); font-size:12px; padding:16px; }
+  .badge { display:inline-block; padding:2px 8px; border-radius:99px; font-size:11px; font-weight:600; margin-left:6px; }
+  .badge-ok { background:var(--ok); color:white; } .badge-err { background:var(--err); color:white; } .badge-pending { background:var(--muted); color:white; }
+  @media (max-width:600px) { .topbar { flex-direction:column; align-items:flex-start; } main { padding:0 10px 60px; } .question { padding:14px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>🧱 Test de Práctica — Tipos de Firewall</h1>
+  <div class="topbar">
+    <div class="stats">Respondidas: <b id="answered">0</b> / <b id="total">0</b> · Correctas: <b id="correct" style="color:var(--ok)">0</b> · Incorrectas: <b id="wrong" style="color:var(--err)">0</b></div>
+    <div>
+      <select id="filter"><option value="all">Todas las secciones</option></select>
+      <button id="btnSubmit" class="primary">Calificar</button>
+      <button id="btnReset" class="danger">Reiniciar</button>
+    </div>
+  </div>
+  <div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
+</header>
+<main>
+  <div id="result"></div>
+  <div class="controls">
+    <button id="btnInstant">Modo instantáneo: <b id="instantState">OFF</b></button>
+    <button id="btnShuffle">Mezclar preguntas</button>
+    <button id="btnOnlyWrong">Mostrar solo erradas</button>
+    <button id="btnAll">Mostrar todas</button>
+  </div>
+  <div id="quiz"></div>
+</main>
+<footer>Test de Práctica — Resumen Firewall: Tipos · Suerte 🍀</footer>
+<script>
+const SECTIONS = {"1": "📦 Parte 1 — Filtrado de Paquetes", "2": "🛰️ Parte 2 — Proxy-Gateway / Bastion Host", "3": "🏠 Parte 3 — Dual-Homed y Screened Host", "4": "🛡️ Parte 4 — Screened Subnet / DMZ", "5": "🔎 Parte 5 — Inspección de Paquetes (SPI)", "6": "💻 Parte 6 — Firewalls Personales"};
+const QUESTIONS = [{"n": 1, "s": 1, "q": "¿Cuántos tipos de firewall se describen en el resumen?", "opts": ["3", "5", "7", "9"], "a": 2, "e": "Se describen 7 tipos: filtrado de paquetes, proxy-gateway, dual-homed host, screened host, screened subnet, inspección de paquetes (SPI) y firewalls personales."}, {"n": 2, "s": 1, "q": "El firewall por filtrado de paquetes utiliza:", "opts": ["Servidores proxy", "Routers con filtros y reglas basadas en políticas de control de acceso", "Antivirus", "Túneles cifrados"], "a": 1, "e": "Usa routers con filtros y reglas basadas en políticas de control de acceso."}, {"n": 3, "s": 1, "q": "El dispositivo que implementa el filtrado de paquetes en el router se llama:", "opts": ["Bastión", "Choke", "Gateway", "Proxy"], "a": 1, "e": "Un Choke es el dispositivo que implementa el filtrado de paquetes."}, {"n": 4, "s": 1, "q": "El filtrado de paquetes NO se basa en:", "opts": ["Protocolos utilizados", "Dirección IP de origen y destino", "Puerto TCP-UDP de origen y destino", "El contenido del área de datos del paquete"], "a": 3, "e": "El filtrado de paquetes trabaja con cabeceras (protocolos, IPs, puertos, comandos de red), NO analiza el área de datos."}, {"n": 5, "s": 1, "q": "Una ventaja del filtrado de paquetes es:", "opts": ["Es muy intrusivo", "Es económico, de alto desempeño y transparente para los usuarios", "Analiza el contenido completo", "Requiere software cliente"], "a": 1, "e": "Ventajas: económicos, alto nivel de desempeño y transparentes para los usuarios."}, {"n": 6, "s": 1, "q": "Los firewalls de filtrado de paquetes (IPFW) funcionan en las capas:", "opts": ["Aplicación y presentación", "Transporte y red", "Física y enlace", "Sesión y transporte"], "a": 1, "e": "Funcionan en las capas de transporte y red de TCP/IP."}, {"n": 7, "s": 1, "q": "Los firewalls de filtrado de paquetes trabajan sobre:", "opts": ["El área de datos del paquete", "La información de las cabeceras de los paquetes IP", "Las direcciones MAC únicamente", "El contenido cifrado"], "a": 1, "e": "Trabajan sobre la información de las cabeceras de los paquetes IP; no analizan el área de datos."}, {"n": 8, "s": 1, "q": "Un cortafuegos suele situarse entre dos o más redes, lo que implica que tiene:", "opts": ["Una sola interfaz", "Al menos dos interfaces de red", "Ninguna interfaz", "Solo interfaces inalámbricas"], "a": 1, "e": "Al situarse entre dos o más redes, tiene al menos dos interfaces de red."}, {"n": 9, "s": 2, "q": "El software de aplicación que filtra conexiones se conoce como:", "opts": ["Choke", "Servidor Proxy", "Router de selección", "DMZ"], "a": 1, "e": "El software que filtra conexiones se conoce como Servidor Proxy; la máquina donde se ejecuta es el Gateway de Aplicación o Bastion Host."}, {"n": 10, "s": 2, "q": "Un Bastion Host es:", "opts": ["Un router de borde", "Una aplicación en un servidor configurada para ofrecer seguridad a la red interna", "Un switch capa 2", "Un antivirus"], "a": 1, "e": "Un bastion host es una aplicación en un servidor especialmente configurado para recibir ataques; generalmente provee un solo servicio."}, {"n": 11, "s": 2, "q": "El bastion host generalmente provee:", "opts": ["Todos los servicios posibles", "Un solo servicio (por ejemplo un proxy)", "Ningún servicio", "Solo servicios de impresión"], "a": 1, "e": "El bastion host, configurado para recibir ataques, generalmente provee un solo servicio (como un servidor proxy)."}, {"n": 12, "s": 2, "q": "El Proxy instalado sobre el nodo bastión actúa como:", "opts": ["Servidor DNS", "Intermediario entre el cliente y el servidor real, transparente a ambos", "Servidor DHCP", "Firewall personal"], "a": 1, "e": "El Proxy actúa de intermediario entre el cliente y el servidor real de la aplicación, siendo transparente a ambas partes."}, {"n": 13, "s": 2, "q": "A diferencia del router (que deja pasar paquetes), los bastion hosts permiten:", "opts": ["Un flujo de paquetes pero no de información", "Un flujo de información pero no un flujo de paquetes", "Ningún flujo", "Solo flujo cifrado"], "a": 1, "e": "Los bastion hosts (application-level gateways) permiten un flujo de información pero no un flujo de paquetes, dando mayor seguridad."}, {"n": 14, "s": 2, "q": "Una estrategia de seguridad para el bastion host es:", "opts": ["Instalar todos los servicios disponibles", "Instalar solo los servicios esenciales (si no está instalado, no puede ser atacado)", "Desactivar el sistema operativo", "No pedir autenticación"], "a": 1, "e": "Instalar solo los servicios esenciales: si el servicio no está instalado, no puede ser atacado."}, {"n": 15, "s": 2, "q": "Un Single-homed bastion host es un dispositivo con:", "opts": ["Dos interfaces de red", "Una interfaz única de red", "Tres interfaces", "Ninguna interfaz"], "a": 1, "e": "El single-homed bastion host tiene una interfaz única de red; se usa como gateway a nivel de aplicación."}, {"n": 16, "s": 2, "q": "Un Dual-homed bastion host es un dispositivo con:", "opts": ["Una interfaz", "Al menos dos interfaces de red", "Solo interfaz inalámbrica", "Cuatro interfaces obligatorias"], "a": 1, "e": "El dual-homed bastion host tiene al menos dos interfaces de red; sirve como gateway de aplicación y filtro de paquetes."}, {"n": 17, "s": 3, "q": "El Dual-Homed Host está conectado a:", "opts": ["Solo la red interna", "Ambos perímetros (interior y exterior) y no deja pasar paquetes IP", "Solo Internet", "Solo la DMZ"], "a": 1, "e": "El Dual-Homed Host está conectado a ambos perímetros y no deja pasar paquetes IP (IP-Forwarding desactivado)."}, {"n": 18, "s": 3, "q": "En el Dual-Homed Host, se dice que actúa con:", "opts": ["IP-Forwarding activado", "IP-Forwarding desactivado", "NAT activado", "Proxy desactivado"], "a": 1, "e": "El Dual-Homed Host actúa con el IP-Forwarding desactivado: no reenvía paquetes IP directamente."}, {"n": 19, "s": 3, "q": "En el Dual-Homed Host, un usuario interior que quiere un servicio exterior:", "opts": ["Se conecta directamente al servicio", "Se conecta primero al Firewall, donde el Proxy atiende y hace de puente", "No puede conectarse nunca", "Usa la DMZ"], "a": 1, "e": "El usuario se conecta primero al Firewall, donde el Proxy atiende y se conecta al servicio exterior, haciendo de puente (dos conexiones)."}, {"n": 20, "s": 3, "q": "El Screened Host combina:", "opts": ["Dos routers", "Un Router con un host bastión, con el principal nivel de seguridad en el filtrado de paquetes", "Dos bastiones", "Tres switches"], "a": 1, "e": "El Screened Host combina un Router con un host bastión; el principal nivel de seguridad proviene del filtrado de paquetes."}, {"n": 21, "s": 3, "q": "En el Screened Host, el único sistema accesible desde el exterior es:", "opts": ["El router", "El bastión, donde se ejecuta el Proxy de aplicaciones", "La DMZ", "El switch"], "a": 1, "e": "En el bastión (único accesible desde el exterior) se ejecuta el Proxy; en el Choke se filtran los paquetes peligrosos."}, {"n": 22, "s": 3, "q": "Una ventaja de Dual-Homed Host y Screened bien configurados es el ocultamiento de información:", "opts": ["Los sistemas externos conocen todos los nombres internos", "Los sistemas externos no deben conocer el nombre de los sistemas internos", "Se publican las IPs internas", "Se desactiva el gateway"], "a": 1, "e": "Ocultamiento: los sistemas externos no deben conocer los nombres de los sistemas internos; solo el Gateway se conecta con el exterior."}, {"n": 23, "s": 4, "q": "El Screened Subnet intenta:", "opts": ["Eliminar el bastión", "Aislar la máquina más atacada y vulnerable (el Nodo Bastión)", "Acelerar la red", "Quitar los routers"], "a": 1, "e": "El Screened Subnet intenta aislar la máquina más atacada y vulnerable, el Nodo Bastión, mediante una DMZ."}, {"n": 24, "s": 4, "q": "DMZ significa:", "opts": ["Dynamic Memory Zone", "Zona Desmilitarizada", "Direct Multi Zone", "Data Management Zone"], "a": 1, "e": "DMZ = Zona Desmilitarizada, donde se ofrecen servicios al exterior aislando los servicios internos."}, {"n": 25, "s": 4, "q": "En el Screened Subnet se utilizan:", "opts": ["Un solo router", "Dos routers: uno exterior y otro interior", "Tres bastiones", "Ningún router"], "a": 1, "e": "Se utilizan dos routers: uno exterior y otro interior."}, {"n": 26, "s": 4, "q": "En el Screened Subnet, el router exterior tiene la misión de:", "opts": ["Asignar IPs", "Bloquear el tráfico no deseado en ambos sentidos", "Solo registrar tráfico", "Cifrar el tráfico"], "a": 1, "e": "El router exterior bloquea el tráfico no deseado en ambos sentidos (hacia la red interna y la externa)."}, {"n": 27, "s": 4, "q": "El router interior del Screened Subnet controla el tráfico entre:", "opts": ["Internet y la DMZ", "La red interna y la DMZ", "Dos redes externas", "El bastión y el proxy"], "a": 1, "e": "El router interior hace lo mismo (filtra) con la red interna y la DMZ."}, {"n": 28, "s": 4, "q": "En el Screened Subnet, la DMZ logra que:", "opts": ["Exista conexión directa entre red interna y externa", "NO exista conexión directa entre la red interna y la externa", "Se elimine el bastión", "La red sea más lenta"], "a": 1, "e": "La DMZ aísla físicamente los servicios internos; no existe conexión directa entre la red interna y la externa."}, {"n": 29, "s": 4, "q": "Si se definen varios niveles de DMZ agregando routers:", "opts": ["Las reglas deben ser iguales en todos", "Las reglas de cada uno deben ser distintas, o los niveles se simplifican a uno solo", "No se pueden definir más niveles", "Se desactiva la seguridad"], "a": 1, "e": "Las reglas de cada router deben ser distintas; de lo contrario los niveles se simplificarían a uno solo."}, {"n": 30, "s": 4, "q": "Una ventaja de estos esquemas es 'reglas de filtrado menos complejas' porque:", "opts": ["El router atiende todo el tráfico", "El router solo debe atender las solicitudes del Gateway", "No hay reglas", "El bastión no filtra"], "a": 1, "e": "Las reglas del router son menos complejas porque solo debe atender las solicitudes del Gateway."}, {"n": 31, "s": 4, "q": "Una desventaja de los esquemas con proxy/gateway es:", "opts": ["Son transparentes y rápidos", "Son intrusivos, no transparentes (requieren software cliente) y más lentos", "No ofrecen protección", "No registran actividad"], "a": 1, "e": "Desventaja: son intrusivos, no transparentes (requieren aplicación especializada) y más lentos porque revisan todo el tráfico."}, {"n": 32, "s": 4, "q": "En la DMZ típicamente se alojan servicios como:", "opts": ["Solo bases de datos internas", "WWW, FTP, SMTP, POP (servicios públicos)", "Solo el firewall personal", "Solo el antivirus"], "a": 1, "e": "En la DMZ se ofrecen servicios al exterior como WWW, FTP, SMTP y POP."}, {"n": 33, "s": 5, "q": "El firewall de Inspección de Paquetes (SPI) se basa en que:", "opts": ["Solo revisa la IP de origen", "Cada paquete que circula es inspeccionado, junto a su procedencia y destino", "No inspecciona nada", "Solo revisa el puerto"], "a": 1, "e": "SPI inspecciona cada paquete que circula, su procedencia y destino, desde la capa de Red hasta la de Aplicaciones."}, {"n": 34, "s": 5, "q": "SPI también se conoce como:", "opts": ["Filtrado estático", "Filtrado de paquetes dinámico", "Proxy de aplicación", "Túnel cifrado"], "a": 1, "e": "La inspección de paquetes (SPI) también se conoce como filtrado de paquetes dinámico."}, {"n": 35, "s": 5, "q": "Un cortafuegos de estado (SPI) mantiene el seguimiento de:", "opts": ["Solo las MAC", "El estado de las conexiones de red (flujos TCP o UDP)", "Solo los puertos abiertos", "La velocidad del enlace"], "a": 1, "e": "Un cortafuegos de estado mantiene seguimiento del estado de las conexiones (flujos TCP o UDP) y sus atributos en RAM."}, {"n": 36, "s": 5, "q": "Los atributos del 'estado de la conexión' que guarda SPI incluyen:", "opts": ["Solo la IP de origen", "Direcciones IP, puertos y números de secuencia de los paquetes", "Solo el protocolo", "La marca del router"], "a": 1, "e": "El estado de la conexión incluye direcciones IP, puertos participantes y números de secuencia de los paquetes."}, {"n": 37, "s": 5, "q": "En SPI, solo se permite pasar a los paquetes que:", "opts": ["Tengan cualquier origen", "Coincidan con una conexión activa conocida", "Estén cifrados", "Vengan del exterior"], "a": 1, "e": "El cortafuegos distingue paquetes legítimos; solo los que coinciden con una conexión activa conocida pueden pasar."}, {"n": 38, "s": 5, "q": "SPI almacena los datos de seguimiento en:", "opts": ["El disco duro", "Tablas de estados dinámicos", "La caché del navegador", "La dirección MAC"], "a": 1, "e": "La inspección de estado almacena los datos en tablas de estados dinámicos."}, {"n": 39, "s": 5, "q": "Las decisiones de filtrado en SPI se basan en:", "opts": ["Solo reglas fijas del administrador", "Reglas del administrador y también el contexto construido por conexiones anteriores", "Solo el azar", "Solo la hora del día"], "a": 1, "e": "Las decisiones no se basan solo en reglas fijas, sino también en el contexto construido por las conexiones y paquetes anteriores."}, {"n": 40, "s": 5, "q": "¿Dónde se suele instalar SPI?", "opts": ["Solo en hogares", "Cuando se requiere seguridad sensible al contexto y en aplicaciones muy complejas (redes de empresas)", "Solo en routers domésticos", "En cualquier PC sin red"], "a": 1, "e": "SPI se instala cuando se requiere seguridad sensible al contexto y en aplicaciones complejas; es común en redes de empresas."}, {"n": 41, "s": 6, "q": "Los Firewalls Personales son aplicaciones para:", "opts": ["Routers de borde", "Usuarios finales que se conectan a una red externa insegura", "Servidores de datacenter", "Switches de capa 3"], "a": 1, "e": "Los firewalls personales son aplicaciones para usuarios finales que desean conectarse a una red insegura protegiendo su PC."}, {"n": 42, "s": 6, "q": "El firewall personal funciona en el PC:", "opts": ["Solo al iniciar", "En forma permanente", "Solo al navegar", "Una vez por semana"], "a": 1, "e": "El firewall personal es un programa que funciona en el PC en forma permanente."}, {"n": 43, "s": 6, "q": "El firewall personal monitoriza las conexiones y:", "opts": ["Permite todas", "Distingue las legítimas de las de atacantes, bloqueando y notificando estas últimas", "Las cifra todas", "Las acelera"], "a": 1, "e": "Monitoriza conexiones entrantes y salientes, distingue las legítimas de las de atacantes, las bloquea y notifica al usuario."}, {"n": 44, "s": 6, "q": "El firewall personal proporciona el mayor grado de seguridad cuando se combina con:", "opts": ["Otro firewall personal", "Un antivirus", "Un segundo router", "Más cables"], "a": 1, "e": "El firewall personal, junto con un antivirus, proporciona el mayor grado de seguridad con herramientas comerciales."}, {"n": 45, "s": 6, "q": "Al instalar un firewall personal, primero hay que asegurarse de que:", "opts": ["Haya dos firewalls instalados", "No exista ningún otro ya instalado (dos generan fallos y conflictos)", "El antivirus esté desactivado", "El router esté apagado"], "a": 1, "e": "Hay que asegurarse de que no exista otro firewall personal: instalar dos no aumenta la seguridad, genera fallos y conflictos."}, {"n": 46, "s": 6, "q": "El nivel de seguridad recomendado para un usuario normal en el firewall personal es:", "opts": ["Laxo", "Normal", "Estricto", "Sin seguridad"], "a": 1, "e": "Se recomienda el nivel normal, salvo usuarios expertos, para quienes se recomienda el nivel estricto."}, {"n": 47, "s": 6, "q": "Durante los primeros días, el firewall personal enviará avisos de dos tipos:", "opts": ["Errores y advertencias del SO", "Peticiones de conexión de programas y ataques detectados", "Actualizaciones y reinicios", "Virus y spam"], "a": 1, "e": "Los avisos son de dos tipos: peticiones de conexión de programas y ataques detectados."}, {"n": 48, "s": 6, "q": "El mantenimiento de un firewall personal implica, igual que un antivirus:", "opts": ["Desinstalarlo cada mes", "Actualizarlo con la última versión disponible", "Apagarlo de noche", "Reinstalar el SO"], "a": 1, "e": "De la misma forma que un antivirus, debemos actualizarlo con la última versión disponible."}, {"n": 49, "s": 1, "q": "La familia de firewalls de filtrado de paquetes sobre la pila TCP/IP se llama:", "opts": ["IPSEC", "IPFW", "SPI", "DMZ"], "a": 1, "e": "La familia de firewalls de filtrado de paquetes sobre TCP/IP se llama IPFW."}, {"n": 50, "s": 3, "q": "El Multihomed bastion host se clasifica así cuando:", "opts": ["Tiene una sola interfaz", "Un Servidor Bastión interno requiere que todo el tráfico pase por un servidor proxy", "No tiene servicios", "Está fuera de la red"], "a": 1, "e": "Un Servidor Bastión interno puede clasificarse como multihomed; reside en la red interna como puerta para recibir tráfico del bastión externo, agregando seguridad."}];
+const THRESH = {};
+let answers={}, instantMode=false, displayList=[...QUESTIONS], onlyWrongView=false, graded=false;
+function letter(i){return["a","b","c","d","e"][i];}
+function renderFilter(){
+  const sel=document.getElementById("filter");
+  Object.entries(SECTIONS).forEach(([k,v])=>{const o=document.createElement("option");o.value=k;o.textContent=v;sel.appendChild(o);});
+  sel.addEventListener("change",render);
+}
+function render(){
+  const quiz=document.getElementById("quiz"); quiz.innerHTML="";
+  const filter=document.getElementById("filter").value;
+  let currentSection=null;
+  let toShow=displayList.filter(q=>filter==="all"||String(q.s)===filter);
+  if(onlyWrongView&&graded) toShow=toShow.filter(q=>answers[q.n]!==undefined&&answers[q.n]!==q.a);
+  toShow.forEach(qd=>{
+    if(qd.s!==currentSection&&filter==="all"){
+      const div=document.createElement("div"); div.className="section-divider"; div.textContent=SECTIONS[qd.s]; quiz.appendChild(div); currentSection=qd.s;
+    }
+    const card=document.createElement("div"); card.className="question"; card.id="q"+qd.n;
+    const h3=document.createElement("h3");
+    const status=answers[qd.n]===undefined?'<span class="badge badge-pending">Sin responder</span>':(graded||instantMode)?(answers[qd.n]===qd.a?'<span class="badge badge-ok">Correcta</span>':'<span class="badge badge-err">Incorrecta</span>'):'<span class="badge badge-pending">Respondida</span>';
+    h3.innerHTML=`Pregunta ${qd.n} ${status}`; card.appendChild(h3);
+    const prompt=document.createElement("div"); prompt.className="prompt"; prompt.textContent=qd.q; card.appendChild(prompt);
+    if(qd.code){const pre=document.createElement("pre");pre.textContent=qd.code;card.appendChild(pre);}
+    const opts=document.createElement("div"); opts.className="options";
+    qd.opts.forEach((txt,idx)=>{
+      const lbl=document.createElement("label"); lbl.className="opt";
+      const radio=document.createElement("input"); radio.type="radio"; radio.name="q"+qd.n; radio.value=idx;
+      if(answers[qd.n]===idx) radio.checked=true;
+      radio.addEventListener("change",()=>{answers[qd.n]=idx; if(instantMode)showFeedback(qd.n); updateStats(); renderItemMarks(qd);});
+      const letterSpan=document.createElement("span"); letterSpan.className="letter"; letterSpan.textContent=letter(idx)+")";
+      const text=document.createElement("span"); text.textContent=txt;
+      lbl.appendChild(radio); lbl.appendChild(letterSpan); lbl.appendChild(text); opts.appendChild(lbl);
+    });
+    card.appendChild(opts);
+    const fb=document.createElement("div"); fb.className="feedback"; fb.id="fb"+qd.n; card.appendChild(fb);
+    quiz.appendChild(card);
+    if(graded||(instantMode&&answers[qd.n]!==undefined)){renderItemMarks(qd); if(answers[qd.n]!==undefined)showFeedback(qd.n);}
+  });
+  if(toShow.length===0) quiz.innerHTML='<div class="question" style="text-align:center;color:var(--muted)">No hay preguntas para mostrar.</div>';
+  updateStats();
+}
+function renderItemMarks(qd){
+  if(!graded&&!instantMode) return; if(answers[qd.n]===undefined) return;
+  const card=document.getElementById("q"+qd.n); if(!card) return;
+  card.querySelectorAll(".opt").forEach((lbl,idx)=>{lbl.classList.remove("correct","incorrect"); if(idx===qd.a)lbl.classList.add("correct"); else if(idx===answers[qd.n])lbl.classList.add("incorrect");});
+  const h3=card.querySelector("h3"); const isOk=answers[qd.n]===qd.a;
+  h3.innerHTML=`Pregunta ${qd.n} `+(isOk?'<span class="badge badge-ok">Correcta</span>':'<span class="badge badge-err">Incorrecta</span>');
+}
+function showFeedback(n){
+  const qd=QUESTIONS.find(q=>q.n===n); const fb=document.getElementById("fb"+n); if(!fb) return;
+  const isOk=answers[n]===qd.a;
+  fb.className="feedback show "+(isOk?"ok":"err");
+  fb.innerHTML=isOk?`✅ <b>Correcto.</b> ${qd.e}`:`❌ <b>Incorrecto.</b> Respuesta: <b>${letter(qd.a)})</b> ${qd.opts[qd.a]}. ${qd.e}`;
+}
+function updateStats(){
+  const answered=Object.keys(answers).length;
+  const correct=Object.entries(answers).filter(([n,a])=>{const q=QUESTIONS.find(x=>x.n===Number(n));return q&&q.a===a;}).length;
+  document.getElementById("answered").textContent=answered;
+  document.getElementById("correct").textContent=correct;
+  document.getElementById("wrong").textContent=answered-correct;
+  document.getElementById("progress").style.width=(answered/QUESTIONS.length*100)+"%";
+}
+function grade(){
+  graded=true;
+  const correct=Object.entries(answers).filter(([n,a])=>{const q=QUESTIONS.find(x=>x.n===Number(n));return q&&q.a===a;}).length;
+  const total=QUESTIONS.length; const pct=Math.round(correct/total*100);
+  let level,cls;
+  if(pct>=90){level="Excelente. Dominás el tema. 🚀";cls="level-elite";}
+  else if(pct>=75){level="Bien. Repasá los que fallaste. 💪";cls="level-good";}
+  else if(pct>=55){level="Justo. Repasá las secciones débiles. 📚";cls="level-mid";}
+  else{level="Volvé a estudiar el material. 🔥";cls="level-bad";}
+  const bySection={};
+  Object.keys(SECTIONS).forEach(s=>bySection[s]={ok:0,total:0});
+  QUESTIONS.forEach(q=>{bySection[q.s].total++;if(answers[q.n]===q.a)bySection[q.s].ok++;});
+  const secHtml=Object.entries(SECTIONS).map(([k,v])=>{const sd=bySection[k];const sPct=sd.total?Math.round(sd.ok/sd.total*100):0;return`<div class="sec-card"><div class="sec-name">${v}</div><div class="sec-score">${sd.ok}/${sd.total} <span style="color:var(--muted);font-size:13px;font-weight:normal">(${sPct}%)</span></div></div>`;}).join("");
+  const res=document.getElementById("result"); res.classList.add("show");
+  res.innerHTML=`<h2>📊 Resultado</h2><div class="score-big">${correct} / ${total} <span style="font-size:24px;color:var(--muted)">(${pct}%)</span></div><div class="score-level ${cls}">${level}</div><div class="by-section">${secHtml}</div><div style="margin-top:14px;color:var(--muted);font-size:14px">Las correctas en verde, las erradas en rojo, con explicación.</div>`;
+  res.scrollIntoView({behavior:"smooth"}); render();
+}
+function reset(){
+  if(!confirm("¿Reiniciar el test? Vas a perder las respuestas.")) return;
+  answers={}; graded=false; onlyWrongView=false;
+  document.getElementById("result").classList.remove("show");
+  displayList=[...QUESTIONS]; render(); window.scrollTo({top:0,behavior:"smooth"});
+}
+function shuffle(){
+  if(graded){if(!confirm("Esto va a reiniciar tus respuestas. ¿Continuar?"))return;answers={};graded=false;}
+  for(let i=displayList.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[displayList[i],displayList[j]]=[displayList[j],displayList[i]];}
+  render();
+}
+document.getElementById("btnSubmit").addEventListener("click",grade);
+document.getElementById("btnReset").addEventListener("click",reset);
+document.getElementById("btnShuffle").addEventListener("click",shuffle);
+document.getElementById("btnInstant").addEventListener("click",()=>{instantMode=!instantMode;document.getElementById("instantState").textContent=instantMode?"ON":"OFF";render();});
+document.getElementById("btnOnlyWrong").addEventListener("click",()=>{if(!graded){alert("Primero calificá el test.");return;}onlyWrongView=true;render();});
+document.getElementById("btnAll").addEventListener("click",()=>{onlyWrongView=false;render();});
+document.getElementById("total").textContent=QUESTIONS.length;
+renderFilter(); render();
+</script>
+</body>
+</html>

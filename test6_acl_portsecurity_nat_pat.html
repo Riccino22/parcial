@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Test — ACL, Port Security y NAT/PAT</title>
+<style>
+  :root {
+    --bg: #0f172a; --panel: #1e293b; --panel-2: #273449; --text: #e2e8f0;
+    --muted: #94a3b8; --accent: #38bdf8; --accent-2: #0ea5e9;
+    --ok: #22c55e; --err: #ef4444; --warn: #f59e0b; --border: #334155;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; background:var(--bg); color:var(--text); line-height:1.5; }
+  header { padding:16px 24px; background:var(--panel); border-bottom:1px solid var(--border); position:sticky; top:0; z-index:10; }
+  header h1 { margin:0 0 6px 0; font-size:18px; color:var(--accent); }
+  .topbar { display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; }
+  .stats { font-size:14px; color:var(--muted); } .stats b { color:var(--text); }
+  main { max-width:920px; margin:24px auto; padding:0 16px 80px; }
+  .controls { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:20px; }
+  button { background:var(--panel); color:var(--text); border:1px solid var(--border); padding:8px 14px; border-radius:8px; cursor:pointer; font-size:14px; transition:background .15s,border-color .15s; }
+  button:hover { background:var(--panel-2); }
+  button.primary { background:var(--accent-2); border-color:var(--accent-2); color:white; font-weight:600; }
+  button.primary:hover { background:var(--accent); }
+  button.danger { background:transparent; border-color:var(--err); color:var(--err); }
+  select { background:var(--panel); color:var(--text); border:1px solid var(--border); padding:8px 12px; border-radius:8px; font-size:14px; }
+  .question { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:18px 20px; margin-bottom:16px; }
+  .question h3 { margin:0 0 8px 0; font-size:15px; color:var(--muted); font-weight:500; }
+  .question .prompt { font-size:15px; margin-bottom:12px; }
+  .question pre { background:#0b1220; border:1px solid var(--border); padding:10px 12px; border-radius:8px; overflow-x:auto; font-size:13px; margin:8px 0 14px; }
+  .options { display:flex; flex-direction:column; gap:8px; }
+  .opt { display:flex; gap:10px; align-items:flex-start; padding:10px 12px; border:1px solid var(--border); background:var(--panel-2); border-radius:8px; cursor:pointer; transition:background .15s,border-color .15s; }
+  .opt:hover { background:#2f3e57; }
+  .opt input { margin-top:3px; accent-color:var(--accent); }
+  .opt .letter { font-weight:bold; color:var(--accent); min-width:18px; }
+  .opt.correct { background:rgba(34,197,94,.15); border-color:var(--ok); }
+  .opt.incorrect { background:rgba(239,68,68,.15); border-color:var(--err); }
+  .feedback { margin-top:12px; padding:10px 12px; border-radius:8px; font-size:14px; display:none; }
+  .feedback.show { display:block; }
+  .feedback.ok { background:rgba(34,197,94,.1); border:1px solid var(--ok); color:#bbf7d0; }
+  .feedback.err { background:rgba(239,68,68,.1); border:1px solid var(--err); color:#fecaca; }
+  .section-divider { margin:28px 0 14px; padding:10px 14px; background:linear-gradient(90deg,var(--accent-2),transparent); border-radius:8px; font-weight:600; color:white; }
+  .progress-bar { height:6px; background:var(--panel-2); border-radius:3px; overflow:hidden; margin-top:8px; }
+  .progress-fill { height:100%; background:var(--accent); transition:width .3s; }
+  #result { background:var(--panel); border:2px solid var(--accent); border-radius:12px; padding:24px; margin-bottom:20px; display:none; }
+  #result.show { display:block; } #result h2 { margin-top:0; color:var(--accent); }
+  .score-big { font-size:42px; font-weight:bold; }
+  .score-level { font-size:18px; margin-top:8px; }
+  .level-elite { color:var(--ok); } .level-good { color:var(--accent); } .level-mid { color:var(--warn); } .level-bad { color:var(--err); }
+  .by-section { margin-top:16px; display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px; }
+  .sec-card { background:var(--panel-2); padding:10px 12px; border-radius:8px; border:1px solid var(--border); font-size:14px; }
+  .sec-card .sec-name { color:var(--muted); font-size:12px; } .sec-card .sec-score { font-size:18px; font-weight:bold; margin-top:4px; }
+  footer { text-align:center; color:var(--muted); font-size:12px; padding:16px; }
+  .badge { display:inline-block; padding:2px 8px; border-radius:99px; font-size:11px; font-weight:600; margin-left:6px; }
+  .badge-ok { background:var(--ok); color:white; } .badge-err { background:var(--err); color:white; } .badge-pending { background:var(--muted); color:white; }
+  @media (max-width:600px) { .topbar { flex-direction:column; align-items:flex-start; } main { padding:0 10px 60px; } .question { padding:14px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>🔐 Test de Práctica — ACL, Port Security y NAT/PAT</h1>
+  <div class="topbar">
+    <div class="stats">Respondidas: <b id="answered">0</b> / <b id="total">0</b> · Correctas: <b id="correct" style="color:var(--ok)">0</b> · Incorrectas: <b id="wrong" style="color:var(--err)">0</b></div>
+    <div>
+      <select id="filter"><option value="all">Todas las secciones</option></select>
+      <button id="btnSubmit" class="primary">Calificar</button>
+      <button id="btnReset" class="danger">Reiniciar</button>
+    </div>
+  </div>
+  <div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
+</header>
+<main>
+  <div id="result"></div>
+  <div class="controls">
+    <button id="btnInstant">Modo instantáneo: <b id="instantState">OFF</b></button>
+    <button id="btnShuffle">Mezclar preguntas</button>
+    <button id="btnOnlyWrong">Mostrar solo erradas</button>
+    <button id="btnAll">Mostrar todas</button>
+  </div>
+  <div id="quiz"></div>
+</main>
+<footer>Test de Práctica — ACL básicas, Port Security y NAT/PAT · Suerte 🍀</footer>
+<script>
+const SECTIONS = {"1": "🚦 Parte 1 — Conceptos de ACL", "2": "📝 Parte 2 — Configuración de ACL", "3": "✅ Parte 3 — Buenas Prácticas y Errores", "4": "🔌 Parte 4 — Port Security", "5": "🌐 Parte 5 — NAT", "6": "🔀 Parte 6 — PAT"};
+const QUESTIONS = [{"n": 1, "s": 1, "q": "ACL significa:", "opts": ["Access Control Level", "Access Control List (Lista de Control de Acceso)", "Automatic Connection List", "Address Control Layer"], "a": 1, "e": "ACL = Access Control List o Lista de Control de Acceso."}, {"n": 2, "s": 1, "q": "Las ACL son:", "opts": ["Protocolos de cifrado", "Conjuntos de reglas que permiten o bloquean tráfico en una red", "Direcciones físicas de los switches", "Tablas de enrutamiento dinámico"], "a": 1, "e": "Las ACL son conjuntos de reglas que permiten o bloquean tráfico dentro de una red, funcionando como filtros."}, {"n": 3, "s": 1, "q": "Las ACL funcionan como filtros que analizan paquetes y deciden si deben:", "opts": ["Cifrarse o descifrarse", "Permitirse, denegarse, continuar o ser descartados", "Acelerarse o frenarse", "Duplicarse o comprimirse"], "a": 1, "e": "Analizan paquetes y deciden si deben permitirse, denegarse, continuar su recorrido o ser descartados."}, {"n": 4, "s": 1, "q": "¿Dónde se pueden configurar las ACL?", "opts": ["Solo en PCs", "Routers, switches capa 3, firewalls y equipos de seguridad", "Solo en servidores", "Solo en cámaras IP"], "a": 1, "e": "Las ACL pueden configurarse en routers, switches de capa 3, firewalls y equipos de seguridad."}, {"n": 5, "s": 1, "q": "Un objetivo principal de las ACL NO es:", "opts": ["Controlar acceso (permitir solo tráfico autorizado)", "Mejorar seguridad", "Reducir tráfico innecesario", "Aumentar la velocidad del procesador del router"], "a": 3, "e": "Los objetivos de las ACL: controlar acceso, mejorar seguridad, reducir tráfico innecesario e implementar políticas. No tienen relación con el procesador."}, {"n": 6, "s": 1, "q": "Cuando un paquete llega a una interfaz con ACL, el dispositivo revisa las reglas:", "opts": ["En orden aleatorio", "En orden, y si encuentra coincidencia ejecuta la acción", "Todas a la vez", "Solo la última regla"], "a": 1, "e": "El dispositivo revisa las reglas en orden; si encuentra coincidencia ejecuta la acción correspondiente."}, {"n": 7, "s": 1, "q": "Si un paquete no encuentra ninguna coincidencia en la ACL, normalmente:", "opts": ["Se permite por defecto", "El tráfico se bloquea", "Se duplica", "Se reenvía al gateway"], "a": 1, "e": "Si no encuentra coincidencia, normalmente el tráfico se bloquea (deny implícito)."}, {"n": 8, "s": 1, "q": "El orden de las reglas en una ACL es:", "opts": ["Irrelevante", "Extremadamente importante", "Solo importa la primera vez", "Importa solo en switches"], "a": 1, "e": "El orden de las reglas es extremadamente importante; una regla mal ubicada puede bloquear toda la red."}, {"n": 9, "s": 1, "q": "¿Qué pasa con esta ACL?\naccess-list 10 deny any\naccess-list 10 permit 192.168.1.0 0.0.0.255", "opts": ["Permite la red 192.168.1.0", "Todo queda bloqueado porque la primera regla niega todo", "Solo bloquea 192.168.1.0", "Funciona correctamente"], "a": 1, "e": "Todo queda bloqueado: la primera regla 'deny any' niega todo antes de llegar a la regla permit.", "code": "access-list 10 deny any\naccess-list 10 permit 192.168.1.0 0.0.0.255"}, {"n": 10, "s": 1, "q": "Las ACL estándar trabajan principalmente con:", "opts": ["Puertos y protocolos", "La IP de origen", "Direcciones MAC", "Servicios y aplicaciones"], "a": 1, "e": "Las ACL estándar trabajan principalmente con la IP de origen. No analizan puertos, protocolos ni servicios."}, {"n": 11, "s": 1, "q": "Las ACL estándar NO analizan:", "opts": ["La IP de origen", "Puertos, protocolos específicos ni servicios", "El número de la lista", "La acción permit/deny"], "a": 1, "e": "Las ACL estándar no analizan puertos, protocolos específicos ni servicios; solo la IP de origen."}, {"n": 12, "s": 2, "q": "En 'access-list 10 permit 192.168.1.0 0.0.0.255', el número 10:", "opts": ["Es la cantidad de hosts", "Identifica la ACL", "Es el puerto", "Es la prioridad"], "a": 1, "e": "El número (10) identifica la ACL.", "code": "access-list 10 permit 192.168.1.0 0.0.0.255"}, {"n": 13, "s": 2, "q": "En una ACL, 'permit' significa:", "opts": ["Bloquea tráfico", "Permite tráfico", "Registra tráfico", "Cifra tráfico"], "a": 1, "e": "permit permite el tráfico; deny lo bloquea."}, {"n": 14, "s": 2, "q": "En una ACL, 'deny' significa:", "opts": ["Permite tráfico", "Bloquea tráfico", "Duplica tráfico", "Acelera tráfico"], "a": 1, "e": "deny bloquea el tráfico."}, {"n": 15, "s": 2, "q": "La wildcard mask 0.0.0.255 representa:", "opts": ["La cantidad de subredes", "Qué partes de la dirección pueden variar", "El gateway", "El broadcast"], "a": 1, "e": "La máscara wildcard (0.0.0.255) representa qué partes de la dirección pueden variar."}, {"n": 16, "s": 2, "q": "La wildcard que corresponde a la máscara normal 255.255.255.0 es:", "opts": ["255.255.255.0", "0.0.0.255", "0.0.0.0", "255.0.0.0"], "a": 1, "e": "La wildcard es el inverso de la máscara: 255.255.255.0 → 0.0.0.255."}, {"n": 17, "s": 2, "q": "Una ACL 'inbound' (entrante):", "opts": ["Filtra tráfico al salir", "Filtra tráfico al entrar a la interfaz", "No filtra nada", "Solo registra"], "a": 1, "e": "Inbound filtra el tráfico al entrar a la interfaz; outbound filtra al salir."}, {"n": 18, "s": 2, "q": "Una ACL 'outbound' (saliente):", "opts": ["Filtra tráfico al entrar", "Filtra tráfico al salir de la interfaz", "Solo cuenta paquetes", "Bloquea siempre"], "a": 1, "e": "Outbound filtra el tráfico al salir de la interfaz."}, {"n": 19, "s": 2, "q": "Para aplicar la ACL 10 al tráfico entrante de la interfaz g0/0 se usa:", "opts": ["ip access-group 10 out", "ip access-group 10 in", "access-list 10 apply", "ip acl 10 inbound"], "a": 1, "e": "Se aplica con 'ip access-group 10 in' dentro de la configuración de la interfaz.", "code": "interface g0/0\n ip access-group 10 in"}, {"n": 20, "s": 2, "q": "Para que solo Administración (192.168.1.0/24) acceda, la ACL correcta es:", "opts": ["deny any / permit 192.168.1.0", "permit 192.168.1.0 0.0.0.255 / deny any", "permit any", "deny 192.168.1.0"], "a": 1, "e": "Primero permite la red autorizada y luego niega el resto: permit 192.168.1.0 0.0.0.255 seguido de deny any.", "code": "access-list 10 permit 192.168.1.0 0.0.0.255\naccess-list 10 deny any"}, {"n": 21, "s": 2, "q": "Para bloquear el equipo específico 192.168.1.50 y permitir el resto:", "opts": ["permit host 192.168.1.50 / deny any", "deny host 192.168.1.50 / permit any", "deny any / permit host 192.168.1.50", "permit 192.168.1.50"], "a": 1, "e": "Se niega el host problemático y luego se permite el resto: deny host 192.168.1.50 seguido de permit any.", "code": "access-list 20 deny host 192.168.1.50\naccess-list 20 permit any"}, {"n": 22, "s": 3, "q": "Una buena práctica al documentar reglas ACL es registrar:", "opts": ["Solo la fecha", "Propósito, fecha, ubicación y administrador responsable", "Solo el número de la ACL", "La MAC del router"], "a": 1, "e": "Hay que documentar propósito, fecha, ubicación y administrador responsable."}, {"n": 23, "s": 3, "q": "El principio de 'mínimo privilegio' en ACL significa:", "opts": ["Permitir todo y bloquear lo sospechoso", "Permitir únicamente lo necesario", "Bloquear todo siempre", "Dar acceso total a administradores"], "a": 1, "e": "El principio de mínimo privilegio implica permitir únicamente lo necesario."}, {"n": 24, "s": 3, "q": "Sobre la complejidad de las ACL, la buena práctica es:", "opts": ["Hacerlas lo más complejas posible", "Mantener la simplicidad, ya que las complejas generan errores", "No documentarlas", "Usar una sola regla gigante"], "a": 1, "e": "Mantener simplicidad: las ACL demasiado complejas generan errores."}, {"n": 25, "s": 3, "q": "Un error frecuente con las ACL es:", "opts": ["Aplicarla a una interfaz", "Crearla pero olvidar aplicarla a una interfaz", "Documentarla", "Probarla antes de producción"], "a": 1, "e": "Crear la ACL no alcanza: debe aplicarse a una interfaz. Olvidarlo es un error frecuente."}, {"n": 26, "s": 3, "q": "Colocar las reglas en orden incorrecto puede:", "opts": ["Acelerar la red", "Bloquear toda la red", "Cifrar el tráfico", "No tener efecto"], "a": 1, "e": "Colocar reglas en orden incorrecto puede bloquear toda la red."}, {"n": 27, "s": 3, "q": "Respecto a las pruebas de las ACL, lo correcto es:", "opts": ["Nunca probar", "Siempre probar antes de producción", "Probar solo en producción", "No hace falta probar"], "a": 1, "e": "Siempre se debe probar la ACL antes de ponerla en producción."}, {"n": 28, "s": 4, "q": "Port Security es una función de:", "opts": ["Routers", "Switches que controla qué dispositivos se conectan físicamente a un puerto", "Firewalls de aplicación", "Servidores DNS"], "a": 1, "e": "Port Security es una función de switches que permite controlar qué dispositivos pueden conectarse físicamente a un puerto."}, {"n": 29, "s": 4, "q": "Sin Port Security, el problema es que:", "opts": ["La red va más lenta", "Cualquiera puede conectar un dispositivo, obtener acceso y generar ataques internos", "Se agotan las IP", "Falla el cifrado"], "a": 1, "e": "Sin Port Security cualquiera puede conectar un dispositivo, acceder a la red y generar ataques internos."}, {"n": 30, "s": 4, "q": "Port Security trabaja controlando:", "opts": ["Direcciones IP", "Direcciones MAC", "Puertos TCP", "Protocolos"], "a": 1, "e": "Cada dispositivo posee una MAC única; Port Security trabaja controlando las direcciones MAC."}, {"n": 31, "s": 4, "q": "El funcionamiento de Port Security en el switch consiste en:", "opts": ["Cifrar el tráfico", "Aprender MAC autorizadas, controlar la cantidad permitida y bloquear dispositivos desconocidos", "Asignar IPs", "Enrutar paquetes"], "a": 1, "e": "El switch aprende las MAC autorizadas, controla la cantidad permitida y bloquea dispositivos desconocidos."}, {"n": 32, "s": 4, "q": "El comando 'switchport port-security maximum 1' significa:", "opts": ["Máximo 1 puerto", "Solo un dispositivo permitido en el puerto", "Velocidad máxima 1 Gbps", "1 violación permitida"], "a": 1, "e": "maximum 1 permite solo un dispositivo (una MAC) en ese puerto.", "code": "switchport port-security maximum 1"}, {"n": 33, "s": 4, "q": "El comando 'switchport port-security mac-address sticky':", "opts": ["Borra las MAC", "Aprende la MAC automáticamente", "Bloquea todas las MAC", "Define la IP del puerto"], "a": 1, "e": "sticky hace que el puerto aprenda la MAC automáticamente.", "code": "switchport port-security mac-address sticky"}, {"n": 34, "s": 4, "q": "El modo de violación 'Protect' hace que el switch:", "opts": ["Desactive el puerto", "Bloquee el tráfico (más silencioso, sin alertas)", "Genere logs y alertas", "Reinicie el switch"], "a": 1, "e": "Protect bloquea el tráfico; es el modo más silencioso, sin generar alertas."}, {"n": 35, "s": 4, "q": "El modo de violación 'Restrict' hace que el switch:", "opts": ["Solo bloquee silenciosamente", "Bloquee y genere alertas/logs", "Desactive el puerto", "No haga nada"], "a": 1, "e": "Restrict bloquea el tráfico y genera alertas/logs."}, {"n": 36, "s": 4, "q": "El modo de violación 'Shutdown' hace que el switch:", "opts": ["Bloquee silenciosamente", "Genere solo logs", "Desactive (apague) el puerto, siendo el más seguro", "Permita el tráfico"], "a": 2, "e": "Shutdown desactiva (apaga) el puerto ante una violación; es el modo más seguro."}, {"n": 37, "s": 4, "q": "Para deshabilitar puertos no utilizados (buena práctica) se usa:", "opts": ["no shutdown", "shutdown sobre el rango de puertos", "port-security off", "delete interface"], "a": 1, "e": "Una buena práctica es deshabilitar puertos no usados con 'shutdown' sobre el rango de interfaces.", "code": "interface range fa0/10-24\n shutdown"}, {"n": 38, "s": 4, "q": "El comando 'switchport mode access' define:", "opts": ["Un puerto troncal", "Un puerto de acceso", "La velocidad del puerto", "La VLAN nativa"], "a": 1, "e": "switchport mode access define el puerto como puerto de acceso.", "code": "switchport mode access"}, {"n": 39, "s": 4, "q": "Si un estudiante conecta un switch personal con Port Security activo:", "opts": ["Todos los equipos acceden sin problema", "El puerto detecta múltiples MAC y bloquea el acceso", "El switch se reinicia", "Se asigna IP automática a todos"], "a": 1, "e": "Con Port Security, el puerto detecta las múltiples MAC del switch personal y bloquea el acceso."}, {"n": 40, "s": 5, "q": "El problema de fondo que motivó NAT es:", "opts": ["La lentitud de IPv6", "IPv4 tiene una cantidad limitada de direcciones que comenzaron a agotarse", "El exceso de switches", "La falta de cifrado"], "a": 1, "e": "IPv4 tiene cantidad limitada de direcciones y, con millones de dispositivos, comenzaron a agotarse."}, {"n": 41, "s": 5, "q": "NAT significa:", "opts": ["Network Access Table", "Network Address Translation", "New Address Type", "Network Authentication Tool"], "a": 1, "e": "NAT = Network Address Translation (traducción de direcciones de red)."}, {"n": 42, "s": 5, "q": "La función principal de NAT es:", "opts": ["Cifrar el tráfico", "Traducir IP privadas a IP públicas", "Asignar MAC", "Bloquear puertos"], "a": 1, "e": "La función principal de NAT es traducir direcciones IP privadas a IP públicas."}, {"n": 43, "s": 5, "q": "¿Cuál de estos es un rango de direcciones privadas?", "opts": ["200.50.100.0/24", "192.168.0.0/16", "8.8.8.0/24", "54.221.0.0/16"], "a": 1, "e": "Los rangos privados son 10.0.0.0/8, 172.16.0.0–172.31.0.0 y 192.168.0.0/16."}, {"n": 44, "s": 5, "q": "Una ventaja de NAT es:", "opts": ["Reemplaza al firewall", "Ahorra IP públicas y oculta parcialmente la red interna", "Evita el malware", "Aumenta la velocidad de Internet"], "a": 1, "e": "NAT ahorra IP públicas, mejora la organización, oculta parcialmente la red interna y facilita la administración."}, {"n": 45, "s": 5, "q": "Una limitación de NAT es:", "opts": ["Que reemplaza el firewall", "Que NO reemplaza al firewall ni evita el malware, y puede dificultar el diagnóstico", "Que cifra el tráfico", "Que agota las IP"], "a": 1, "e": "NAT no reemplaza el firewall, puede dificultar el diagnóstico y no evita malware."}, {"n": 46, "s": 6, "q": "PAT significa:", "opts": ["Private Address Translation", "Port Address Translation", "Public Access Tool", "Packet Address Type"], "a": 1, "e": "PAT = Port Address Translation (traducción de direcciones de puerto)."}, {"n": 47, "s": 6, "q": "La diferencia principal de PAT respecto a NAT es que PAT:", "opts": ["Usa muchas IP públicas", "Usa una IP pública compartida con puertos diferentes", "No traduce direcciones", "Solo funciona con IPv6"], "a": 1, "e": "PAT utiliza una IP pública compartida diferenciando las conexiones por puertos distintos."}, {"n": 48, "s": 6, "q": "La analogía usada para PAT es:", "opts": ["Un buzón de correo", "Una recepción de hotel con habitaciones (puertos) diferentes", "Una autopista", "Un semáforo"], "a": 1, "e": "PAT es como una recepción de hotel (IP pública) con habitaciones diferentes (puertos) para cada equipo."}, {"n": 49, "s": 6, "q": "En la configuración de PAT, la palabra 'overload':", "opts": ["Sobrecarga el router", "Permite múltiples conexiones sobre la misma IP pública", "Apaga el puerto", "Borra la ACL"], "a": 1, "e": "overload permite múltiples conexiones compartiendo la misma IP pública (esto es lo que define PAT).", "code": "ip nat inside source list 1 interface g0/0 overload"}, {"n": 50, "s": 6, "q": "En la config PAT, 'access-list 1 permit 192.168.0.0 0.0.0.255' sirve para:", "opts": ["Bloquear la red interna", "Definir la red interna que será traducida", "Apagar el puerto", "Asignar IP pública"], "a": 1, "e": "La access-list define la red interna (192.168.0.0/24) cuyas direcciones serán traducidas.", "code": "access-list 1 permit 192.168.0.0 0.0.0.255"}];
+const THRESH = {};
+let answers={}, instantMode=false, displayList=[...QUESTIONS], onlyWrongView=false, graded=false;
+function letter(i){return["a","b","c","d","e"][i];}
+function renderFilter(){
+  const sel=document.getElementById("filter");
+  Object.entries(SECTIONS).forEach(([k,v])=>{const o=document.createElement("option");o.value=k;o.textContent=v;sel.appendChild(o);});
+  sel.addEventListener("change",render);
+}
+function render(){
+  const quiz=document.getElementById("quiz"); quiz.innerHTML="";
+  const filter=document.getElementById("filter").value;
+  let currentSection=null;
+  let toShow=displayList.filter(q=>filter==="all"||String(q.s)===filter);
+  if(onlyWrongView&&graded) toShow=toShow.filter(q=>answers[q.n]!==undefined&&answers[q.n]!==q.a);
+  toShow.forEach(qd=>{
+    if(qd.s!==currentSection&&filter==="all"){
+      const div=document.createElement("div"); div.className="section-divider"; div.textContent=SECTIONS[qd.s]; quiz.appendChild(div); currentSection=qd.s;
+    }
+    const card=document.createElement("div"); card.className="question"; card.id="q"+qd.n;
+    const h3=document.createElement("h3");
+    const status=answers[qd.n]===undefined?'<span class="badge badge-pending">Sin responder</span>':(graded||instantMode)?(answers[qd.n]===qd.a?'<span class="badge badge-ok">Correcta</span>':'<span class="badge badge-err">Incorrecta</span>'):'<span class="badge badge-pending">Respondida</span>';
+    h3.innerHTML=`Pregunta ${qd.n} ${status}`; card.appendChild(h3);
+    const prompt=document.createElement("div"); prompt.className="prompt"; prompt.textContent=qd.q; card.appendChild(prompt);
+    if(qd.code){const pre=document.createElement("pre");pre.textContent=qd.code;card.appendChild(pre);}
+    const opts=document.createElement("div"); opts.className="options";
+    qd.opts.forEach((txt,idx)=>{
+      const lbl=document.createElement("label"); lbl.className="opt";
+      const radio=document.createElement("input"); radio.type="radio"; radio.name="q"+qd.n; radio.value=idx;
+      if(answers[qd.n]===idx) radio.checked=true;
+      radio.addEventListener("change",()=>{answers[qd.n]=idx; if(instantMode)showFeedback(qd.n); updateStats(); renderItemMarks(qd);});
+      const letterSpan=document.createElement("span"); letterSpan.className="letter"; letterSpan.textContent=letter(idx)+")";
+      const text=document.createElement("span"); text.textContent=txt;
+      lbl.appendChild(radio); lbl.appendChild(letterSpan); lbl.appendChild(text); opts.appendChild(lbl);
+    });
+    card.appendChild(opts);
+    const fb=document.createElement("div"); fb.className="feedback"; fb.id="fb"+qd.n; card.appendChild(fb);
+    quiz.appendChild(card);
+    if(graded||(instantMode&&answers[qd.n]!==undefined)){renderItemMarks(qd); if(answers[qd.n]!==undefined)showFeedback(qd.n);}
+  });
+  if(toShow.length===0) quiz.innerHTML='<div class="question" style="text-align:center;color:var(--muted)">No hay preguntas para mostrar.</div>';
+  updateStats();
+}
+function renderItemMarks(qd){
+  if(!graded&&!instantMode) return; if(answers[qd.n]===undefined) return;
+  const card=document.getElementById("q"+qd.n); if(!card) return;
+  card.querySelectorAll(".opt").forEach((lbl,idx)=>{lbl.classList.remove("correct","incorrect"); if(idx===qd.a)lbl.classList.add("correct"); else if(idx===answers[qd.n])lbl.classList.add("incorrect");});
+  const h3=card.querySelector("h3"); const isOk=answers[qd.n]===qd.a;
+  h3.innerHTML=`Pregunta ${qd.n} `+(isOk?'<span class="badge badge-ok">Correcta</span>':'<span class="badge badge-err">Incorrecta</span>');
+}
+function showFeedback(n){
+  const qd=QUESTIONS.find(q=>q.n===n); const fb=document.getElementById("fb"+n); if(!fb) return;
+  const isOk=answers[n]===qd.a;
+  fb.className="feedback show "+(isOk?"ok":"err");
+  fb.innerHTML=isOk?`✅ <b>Correcto.</b> ${qd.e}`:`❌ <b>Incorrecto.</b> Respuesta: <b>${letter(qd.a)})</b> ${qd.opts[qd.a]}. ${qd.e}`;
+}
+function updateStats(){
+  const answered=Object.keys(answers).length;
+  const correct=Object.entries(answers).filter(([n,a])=>{const q=QUESTIONS.find(x=>x.n===Number(n));return q&&q.a===a;}).length;
+  document.getElementById("answered").textContent=answered;
+  document.getElementById("correct").textContent=correct;
+  document.getElementById("wrong").textContent=answered-correct;
+  document.getElementById("progress").style.width=(answered/QUESTIONS.length*100)+"%";
+}
+function grade(){
+  graded=true;
+  const correct=Object.entries(answers).filter(([n,a])=>{const q=QUESTIONS.find(x=>x.n===Number(n));return q&&q.a===a;}).length;
+  const total=QUESTIONS.length; const pct=Math.round(correct/total*100);
+  let level,cls;
+  if(pct>=90){level="Excelente. Dominás el tema. 🚀";cls="level-elite";}
+  else if(pct>=75){level="Bien. Repasá los que fallaste. 💪";cls="level-good";}
+  else if(pct>=55){level="Justo. Repasá las secciones débiles. 📚";cls="level-mid";}
+  else{level="Volvé a estudiar el material. 🔥";cls="level-bad";}
+  const bySection={};
+  Object.keys(SECTIONS).forEach(s=>bySection[s]={ok:0,total:0});
+  QUESTIONS.forEach(q=>{bySection[q.s].total++;if(answers[q.n]===q.a)bySection[q.s].ok++;});
+  const secHtml=Object.entries(SECTIONS).map(([k,v])=>{const sd=bySection[k];const sPct=sd.total?Math.round(sd.ok/sd.total*100):0;return`<div class="sec-card"><div class="sec-name">${v}</div><div class="sec-score">${sd.ok}/${sd.total} <span style="color:var(--muted);font-size:13px;font-weight:normal">(${sPct}%)</span></div></div>`;}).join("");
+  const res=document.getElementById("result"); res.classList.add("show");
+  res.innerHTML=`<h2>📊 Resultado</h2><div class="score-big">${correct} / ${total} <span style="font-size:24px;color:var(--muted)">(${pct}%)</span></div><div class="score-level ${cls}">${level}</div><div class="by-section">${secHtml}</div><div style="margin-top:14px;color:var(--muted);font-size:14px">Las correctas en verde, las erradas en rojo, con explicación.</div>`;
+  res.scrollIntoView({behavior:"smooth"}); render();
+}
+function reset(){
+  if(!confirm("¿Reiniciar el test? Vas a perder las respuestas.")) return;
+  answers={}; graded=false; onlyWrongView=false;
+  document.getElementById("result").classList.remove("show");
+  displayList=[...QUESTIONS]; render(); window.scrollTo({top:0,behavior:"smooth"});
+}
+function shuffle(){
+  if(graded){if(!confirm("Esto va a reiniciar tus respuestas. ¿Continuar?"))return;answers={};graded=false;}
+  for(let i=displayList.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[displayList[i],displayList[j]]=[displayList[j],displayList[i]];}
+  render();
+}
+document.getElementById("btnSubmit").addEventListener("click",grade);
+document.getElementById("btnReset").addEventListener("click",reset);
+document.getElementById("btnShuffle").addEventListener("click",shuffle);
+document.getElementById("btnInstant").addEventListener("click",()=>{instantMode=!instantMode;document.getElementById("instantState").textContent=instantMode?"ON":"OFF";render();});
+document.getElementById("btnOnlyWrong").addEventListener("click",()=>{if(!graded){alert("Primero calificá el test.");return;}onlyWrongView=true;render();});
+document.getElementById("btnAll").addEventListener("click",()=>{onlyWrongView=false;render();});
+document.getElementById("total").textContent=QUESTIONS.length;
+renderFilter(); render();
+</script>
+</body>
+</html>

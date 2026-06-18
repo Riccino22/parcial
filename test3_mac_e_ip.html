@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Test — Direcciones MAC e IP</title>
+<style>
+  :root {
+    --bg: #0f172a; --panel: #1e293b; --panel-2: #273449; --text: #e2e8f0;
+    --muted: #94a3b8; --accent: #38bdf8; --accent-2: #0ea5e9;
+    --ok: #22c55e; --err: #ef4444; --warn: #f59e0b; --border: #334155;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; background:var(--bg); color:var(--text); line-height:1.5; }
+  header { padding:16px 24px; background:var(--panel); border-bottom:1px solid var(--border); position:sticky; top:0; z-index:10; }
+  header h1 { margin:0 0 6px 0; font-size:18px; color:var(--accent); }
+  .topbar { display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; }
+  .stats { font-size:14px; color:var(--muted); } .stats b { color:var(--text); }
+  main { max-width:920px; margin:24px auto; padding:0 16px 80px; }
+  .controls { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:20px; }
+  button { background:var(--panel); color:var(--text); border:1px solid var(--border); padding:8px 14px; border-radius:8px; cursor:pointer; font-size:14px; transition:background .15s,border-color .15s; }
+  button:hover { background:var(--panel-2); }
+  button.primary { background:var(--accent-2); border-color:var(--accent-2); color:white; font-weight:600; }
+  button.primary:hover { background:var(--accent); }
+  button.danger { background:transparent; border-color:var(--err); color:var(--err); }
+  select { background:var(--panel); color:var(--text); border:1px solid var(--border); padding:8px 12px; border-radius:8px; font-size:14px; }
+  .question { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:18px 20px; margin-bottom:16px; }
+  .question h3 { margin:0 0 8px 0; font-size:15px; color:var(--muted); font-weight:500; }
+  .question .prompt { font-size:15px; margin-bottom:12px; }
+  .question pre { background:#0b1220; border:1px solid var(--border); padding:10px 12px; border-radius:8px; overflow-x:auto; font-size:13px; margin:8px 0 14px; }
+  .options { display:flex; flex-direction:column; gap:8px; }
+  .opt { display:flex; gap:10px; align-items:flex-start; padding:10px 12px; border:1px solid var(--border); background:var(--panel-2); border-radius:8px; cursor:pointer; transition:background .15s,border-color .15s; }
+  .opt:hover { background:#2f3e57; }
+  .opt input { margin-top:3px; accent-color:var(--accent); }
+  .opt .letter { font-weight:bold; color:var(--accent); min-width:18px; }
+  .opt.correct { background:rgba(34,197,94,.15); border-color:var(--ok); }
+  .opt.incorrect { background:rgba(239,68,68,.15); border-color:var(--err); }
+  .feedback { margin-top:12px; padding:10px 12px; border-radius:8px; font-size:14px; display:none; }
+  .feedback.show { display:block; }
+  .feedback.ok { background:rgba(34,197,94,.1); border:1px solid var(--ok); color:#bbf7d0; }
+  .feedback.err { background:rgba(239,68,68,.1); border:1px solid var(--err); color:#fecaca; }
+  .section-divider { margin:28px 0 14px; padding:10px 14px; background:linear-gradient(90deg,var(--accent-2),transparent); border-radius:8px; font-weight:600; color:white; }
+  .progress-bar { height:6px; background:var(--panel-2); border-radius:3px; overflow:hidden; margin-top:8px; }
+  .progress-fill { height:100%; background:var(--accent); transition:width .3s; }
+  #result { background:var(--panel); border:2px solid var(--accent); border-radius:12px; padding:24px; margin-bottom:20px; display:none; }
+  #result.show { display:block; } #result h2 { margin-top:0; color:var(--accent); }
+  .score-big { font-size:42px; font-weight:bold; }
+  .score-level { font-size:18px; margin-top:8px; }
+  .level-elite { color:var(--ok); } .level-good { color:var(--accent); } .level-mid { color:var(--warn); } .level-bad { color:var(--err); }
+  .by-section { margin-top:16px; display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px; }
+  .sec-card { background:var(--panel-2); padding:10px 12px; border-radius:8px; border:1px solid var(--border); font-size:14px; }
+  .sec-card .sec-name { color:var(--muted); font-size:12px; } .sec-card .sec-score { font-size:18px; font-weight:bold; margin-top:4px; }
+  footer { text-align:center; color:var(--muted); font-size:12px; padding:16px; }
+  .badge { display:inline-block; padding:2px 8px; border-radius:99px; font-size:11px; font-weight:600; margin-left:6px; }
+  .badge-ok { background:var(--ok); color:white; } .badge-err { background:var(--err); color:white; } .badge-pending { background:var(--muted); color:white; }
+  @media (max-width:600px) { .topbar { flex-direction:column; align-items:flex-start; } main { padding:0 10px 60px; } .question { padding:14px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>🔗 Test de Práctica — Direcciones MAC e IP</h1>
+  <div class="topbar">
+    <div class="stats">Respondidas: <b id="answered">0</b> / <b id="total">0</b> · Correctas: <b id="correct" style="color:var(--ok)">0</b> · Incorrectas: <b id="wrong" style="color:var(--err)">0</b></div>
+    <div>
+      <select id="filter"><option value="all">Todas las secciones</option></select>
+      <button id="btnSubmit" class="primary">Calificar</button>
+      <button id="btnReset" class="danger">Reiniciar</button>
+    </div>
+  </div>
+  <div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
+</header>
+<main>
+  <div id="result"></div>
+  <div class="controls">
+    <button id="btnInstant">Modo instantáneo: <b id="instantState">OFF</b></button>
+    <button id="btnShuffle">Mezclar preguntas</button>
+    <button id="btnOnlyWrong">Mostrar solo erradas</button>
+    <button id="btnAll">Mostrar todas</button>
+  </div>
+  <div id="quiz"></div>
+</main>
+<footer>Test de Práctica — Direcciones MAC e IP · Suerte 🍀</footer>
+<script>
+const SECTIONS = {"1": "🆔 Parte 1 — Conceptos Generales", "2": "🌍 Parte 2 — Dirección IP", "3": "🏷️ Parte 3 — Dirección MAC", "4": "🔧 Parte 4 — Obtener y Cambiar la MAC", "5": "🤝 Parte 5 — IP y MAC trabajando juntas", "6": "📊 Parte 6 — Diferencias Principales"};
+const QUESTIONS = [{"n": 1, "s": 1, "q": "Las direcciones MAC e IP son las que:", "opts": ["Definen la velocidad de la red", "Definen de manera única un dispositivo y una conexión en una red", "Cifran el tráfico de datos", "Asignan ancho de banda"], "a": 1, "e": "Las direcciones MAC e IP definen de manera única un dispositivo y una conexión en una red."}, {"n": 2, "s": 1, "q": "Una dirección MAC es un número asignado por:", "opts": ["El ISP", "El administrador de red", "El fabricante a la tarjeta NIC", "El protocolo DHCP"], "a": 2, "e": "La dirección MAC es un número asignado a la tarjeta NIC por el fabricante."}, {"n": 3, "s": 1, "q": "Una dirección IP es un número asignado a:", "opts": ["La tarjeta de red por el fabricante", "La conexión en una red", "El procesador del dispositivo", "El sistema operativo"], "a": 1, "e": "La dirección IP es un número asignado a la conexión en una red."}, {"n": 4, "s": 1, "q": "La diferencia básica entre MAC e IP es que la MAC:", "opts": ["Identifica una conexión y la IP un dispositivo", "Identifica de forma única un dispositivo, y la IP define la conexión de una red con la interfaz", "Es asignada por el ISP y la IP por el fabricante", "Cambia constantemente y la IP es fija"], "a": 1, "e": "La MAC identifica de forma única un dispositivo; la IP define de manera única la conexión de una red con la interfaz de un dispositivo."}, {"n": 5, "s": 2, "q": "Una dirección IP es:", "opts": ["Un conjunto único de números que identifica un dispositivo conectado a Internet", "Un código de fabricante", "Una dirección física grabada en el hardware", "Un protocolo de cifrado"], "a": 0, "e": "Una dirección IP es un conjunto único de números que identifica un dispositivo conectado a Internet."}, {"n": 6, "s": 2, "q": "¿Qué es un ISP?", "opts": ["Internet Security Protocol", "Proveedor de Servicios de Internet", "Internet Service Phone", "IP Service Provider en hardware"], "a": 1, "e": "ISP = Proveedor de Servicios de Internet. Cada red se denomina ISP."}, {"n": 7, "s": 2, "q": "¿Quién asigna la dirección IP cuando compras un servicio?", "opts": ["El fabricante de la tarjeta", "El ISP, de su conjunto de direcciones que administra", "El sistema operativo", "El protocolo MAC"], "a": 1, "e": "Cada ISP tiene un conjunto de direcciones IP que administra y, al comprar el servicio, te asigna una IP."}, {"n": 8, "s": 2, "q": "Una dirección IPv4 se ve como:", "opts": ["Ocho conjuntos de caracteres hexadecimales", "Cuatro conjuntos de números (0-255) separados por puntos", "Seis bloques separados por dos puntos", "Doce dígitos hexadecimales"], "a": 1, "e": "IPv4 se ve como cuatro conjuntos de números separados por puntos, cada uno de 0 a 255. Ej: 54.221.192.241"}, {"n": 9, "s": 2, "q": "Una dirección IPv6 se ve como:", "opts": ["Cuatro números separados por puntos", "Ocho conjuntos de cadenas de cuatro caracteres separadas por dos puntos, en hexadecimal", "Doce dígitos decimales", "Seis bloques de dos caracteres"], "a": 1, "e": "IPv6 se ve como ocho conjuntos de cadenas de cuatro caracteres separadas por dos puntos, en valores hexadecimales."}, {"n": 10, "s": 2, "q": "¿Cuántas direcciones aproximadas permite IPv4?", "opts": ["4.300 millones", "320 undecillones", "65.536", "16 millones"], "a": 0, "e": "IPv4 permite aproximadamente 4.300 millones de direcciones, casi todas ya tomadas."}, {"n": 11, "s": 2, "q": "¿Por qué el mundo migra a IPv6?", "opts": ["Porque es más rápido", "Porque las direcciones IPv4 casi se agotaron e IPv6 ofrece muchísimas más", "Porque IPv4 es inseguro", "Porque IPv6 no usa hexadecimal"], "a": 1, "e": "Casi todas las IPv4 están tomadas; IPv6 ofrece más de 320 undecillones de direcciones posibles."}, {"n": 12, "s": 2, "q": "IPv4 es una dirección de:", "opts": ["48 bits", "32 bits", "128 bits", "64 bits"], "a": 1, "e": "IPv4 es una dirección de 32 bits (4 bytes)."}, {"n": 13, "s": 2, "q": "IPv6 es una dirección de:", "opts": ["32 bits", "48 bits", "64 bits", "128 bits"], "a": 3, "e": "IPv6 es una dirección de 128 bits (16 bytes)."}, {"n": 14, "s": 3, "q": "MAC son las siglas de:", "opts": ["Memory Access Control", "Media Access Control", "Main Address Code", "Machine Access Channel"], "a": 1, "e": "MAC = Media Access Control (Control de Acceso a Medios)."}, {"n": 15, "s": 3, "q": "Una dirección MAC identifica:", "opts": ["Una conexión de red", "Una interfaz de red única en un dispositivo", "Un proveedor de Internet", "Una ruta de red"], "a": 1, "e": "La dirección MAC identifica una 'interfaz de red' única en un dispositivo."}, {"n": 16, "s": 3, "q": "A diferencia de las IP (reasignables), las MAC:", "opts": ["Cambian al reiniciar", "Se vinculan a un adaptador físico y son asignadas por los fabricantes", "Las asigna el ISP", "Se renuevan cada 24 horas"], "a": 1, "e": "Las MAC se vinculan a un adaptador físico y son asignadas por los fabricantes, mientras que las IP se reasignan."}, {"n": 17, "s": 3, "q": "Una dirección MAC es una cadena de:", "opts": ["8 dígitos", "12 dígitos (0-9 y A-F)", "16 dígitos", "32 dígitos"], "a": 1, "e": "Una MAC es una cadena de 12 dígitos donde cada dígito es un número de 0 a 9 o una letra de A a F (hexadecimal)."}, {"n": 18, "s": 3, "q": "El formato MAC más común y preferido es:", "opts": ["68-7F-74-12-34-56", "687.F74.123.456", "68:7F:74:12:34:56", "6,87F,741,234,56"], "a": 2, "e": "El formato más utilizado y preferido es con dos puntos: 68:7F:74:12:34:56."}, {"n": 19, "s": 3, "q": "Los primeros seis dígitos de la MAC (el 'prefijo') representan:", "opts": ["El número de serie único del adaptador", "El fabricante del adaptador", "La red conectada", "El protocolo usado"], "a": 1, "e": "Los primeros seis dígitos (prefijo) representan al fabricante; los últimos seis, el número único del adaptador."}, {"n": 20, "s": 3, "q": "¿La dirección MAC contiene información sobre la red conectada?", "opts": ["Sí, indica la subred", "No, no contiene información sobre a qué red está conectado el dispositivo", "Sí, indica el gateway", "Solo en IPv6"], "a": 1, "e": "La dirección MAC NO contiene información sobre a qué red está conectado un dispositivo."}, {"n": 21, "s": 3, "q": "Una dirección MAC es un identificador de:", "opts": ["32 bits", "48 bits (6 bloques de dos caracteres hexadecimales)", "64 bits", "128 bits"], "a": 1, "e": "Es un identificador de 48 bits: 6 bloques de dos caracteres hexadecimales (8 bits cada uno). 6 × 8 = 48 bits."}, {"n": 22, "s": 3, "q": "A la dirección MAC también se la conoce como:", "opts": ["Dirección lógica", "Dirección física", "Dirección de red", "Dirección de difusión"], "a": 1, "e": "A la MAC se la conoce también como dirección física, única para cada dispositivo."}, {"n": 23, "s": 3, "q": "La MAC está determinada por el IEEE (últimos 24 bits) y el fabricante (primeros 24 bits) usando:", "opts": ["El protocolo ARP", "El Organizationally Unique Identifier (OUI)", "El protocolo DHCP", "La máscara de subred"], "a": 1, "e": "Está configurada por el IEEE (últimos 24 bits) y el fabricante (primeros 24 bits) usando el Organizationally Unique Identifier (OUI)."}, {"n": 24, "s": 3, "q": "Las numeraciones manejadas por el IEEE para MAC en capa 2 OSI son:", "opts": ["IPv4, IPv6 y CIDR", "MAC-48, EUI-48 y EUI-64", "TCP, UDP e ICMP", "ARP, RARP y DHCP"], "a": 1, "e": "Las tres numeraciones del IEEE son MAC-48, EUI-48 y EUI-64, diseñadas como identificadores globalmente únicos."}, {"n": 25, "s": 3, "q": "Las direcciones MAC a veces se llaman 'burned-in addresses' porque:", "opts": ["Se calientan al usarse", "Son escritas directamente en forma binaria en el hardware al fabricarse", "Se queman si hay un cortocircuito", "Las graba el sistema operativo"], "a": 1, "e": "Se llaman burned-in addresses porque son escritas directamente, en forma binaria, en el hardware al momento de su fabricación."}, {"n": 26, "s": 3, "q": "En un firewall o switch, la MAC se puede usar para:", "opts": ["Asignar IPs automáticamente", "Permitir solo a unas MAC concretas el acceso a la red (control de hardware)", "Cifrar el tráfico", "Aumentar la velocidad"], "a": 1, "e": "Se puede añadir control de hardware en un conmutador o punto de acceso para permitir solo a MAC concretas el acceso a la red (ej. en un Firewall)."}, {"n": 27, "s": 4, "q": "Modificar la dirección MAC que identifica la interfaz de red se conoce como:", "opts": ["IP spoofing", "MAC spoofing", "ARP poisoning", "MAC flooding"], "a": 1, "e": "La práctica de modificar la MAC que identifica la interfaz se conoce como MAC spoofing."}, {"n": 28, "s": 4, "q": "¿Es posible cambiar la dirección MAC?", "opts": ["No, es imposible de modificar", "Sí, la capa del sistema operativo la gestiona y se puede modificar", "Solo el fabricante puede hacerlo", "Solo en IPv6"], "a": 1, "e": "Aunque la MAC es única, la capa de sistema operativo la gestiona, por lo que se puede modificar (MAC spoofing)."}, {"n": 29, "s": 4, "q": "En Windows, para obtener la MAC, el comando más usado es:", "opts": ["ifconfig", "ipconfig /all (o getmac)", "ip link list", "netstat -a"], "a": 1, "e": "En Windows la forma más sencilla es 'ipconfig /all' en cmd, o también el comando 'getmac'."}, {"n": 30, "s": 4, "q": "En UNIX/Linux/Mac OS X, para obtener la MAC se usa:", "opts": ["ipconfig /all", "getmac", "ifconfig (muestra la MAC en el epígrafe ether)", "arp -a"], "a": 2, "e": "En sistemas *nix se ejecuta 'ifconfig', que muestra las interfaces con sus MAC en el epígrafe 'ether'."}, {"n": 31, "s": 4, "q": "En Windows, la MAC NO puede cambiarse por comandos, pero sí:", "opts": ["Reinstalando el SO", "En la configuración de la tarjeta de red (Panel de control) o alterando 'NetworkAddress' en el registro", "Cambiando el ISP", "Apagando el firewall"], "a": 1, "e": "En Windows se cambia en la configuración de la tarjeta de red en el Panel de control, o alterando el valor 'NetworkAddress' en el registro."}, {"n": 32, "s": 4, "q": "Con el paquete iproute2 se obtienen las MAC de todas las tarjetas ethernet con:", "opts": ["ifconfig -a", "ip link list", "getmac /v", "arp -n"], "a": 1, "e": "Usando el paquete iproute2 es posible obtener las MAC con 'ip link list'."}, {"n": 33, "s": 5, "q": "La dirección IP se usa para:", "opts": ["Entregar datos al dispositivo correcto en una red", "Transportar datos de una red a otra usando TCP/IP", "Identificar el fabricante del hardware", "Cifrar la información"], "a": 1, "e": "La dirección IP se usa para transportar datos de una red a otra utilizando el protocolo TCP/IP."}, {"n": 34, "s": 5, "q": "La dirección MAC se usa para:", "opts": ["Transportar datos entre redes", "Entregar los datos al dispositivo correcto dentro de una red", "Asignar el ISP", "Definir la máscara de subred"], "a": 1, "e": "La dirección MAC se usa para entregar los datos al dispositivo correcto en una red."}, {"n": 35, "s": 5, "q": "En la analogía del correo, la MAC responde a:", "opts": ["Dónde está el destinatario", "Quién es el destinatario (el nombre)", "El servicio postal", "El buzón"], "a": 1, "e": "En la analogía: la MAC responde a quién es el destinatario (el nombre, ej. Juan Pérez)."}, {"n": 36, "s": 5, "q": "En la analogía del correo, la dirección IP indica:", "opts": ["Quién es el destinatario", "En dónde está el destinatario (el domicilio)", "El nombre de la persona", "El cartero"], "a": 1, "e": "La dirección IP indica en dónde está el destinatario (el domicilio)."}, {"n": 37, "s": 5, "q": "En la analogía, el enrutador/módem con IP única equivale a:", "opts": ["Las personas que viven en la casa", "La dirección particular asignada por el servicio postal (ISP)", "El nombre personal", "La carta"], "a": 1, "e": "El enrutador/módem tiene una IP única ('dirección particular') asignada por su ISP ('servicio postal')."}, {"n": 38, "s": 5, "q": "En la analogía, los dispositivos conectados con MAC única equivalen a:", "opts": ["La dirección particular", "Las personas que viven en casa (nombres personales)", "El buzón", "El servicio postal"], "a": 1, "e": "Los dispositivos conectados al enrutador (personas que viven en casa) tienen MAC únicas (nombres personales)."}, {"n": 39, "s": 6, "q": "La forma completa de IP es:", "opts": ["Internet Process", "Dirección de Protocolo de Internet", "Internal Path", "Internet Port"], "a": 1, "e": "La forma completa de IP es la dirección de Protocolo de Internet."}, {"n": 40, "s": 6, "q": "La forma completa de MAC es:", "opts": ["Main Access Control", "Control de Acceso a Medios", "Machine Address Code", "Media Access Channel"], "a": 1, "e": "La forma completa de MAC es Control de Acceso a Medios (Media Access Control)."}, {"n": 41, "s": 6, "q": "La MAC es asignada por:", "opts": ["El administrador de red", "El fabricante del hardware de la interfaz", "El ISP", "El protocolo DHCP"], "a": 1, "e": "La MAC es asignada por el fabricante del hardware de la interfaz."}, {"n": 42, "s": 6, "q": "La IP es asignada por:", "opts": ["El fabricante de la tarjeta NIC", "El administrador de la red o el ISP", "El IEEE", "El BIOS del equipo"], "a": 1, "e": "La IP es asignada por el administrador de la red o el Proveedor de Servicios de Internet (ISP)."}, {"n": 43, "s": 6, "q": "¿Qué protocolo recupera la dirección MAC?", "opts": ["RARP", "ARP", "DHCP", "DNS"], "a": 1, "e": "El protocolo ARP recupera la dirección MAC de un dispositivo."}, {"n": 44, "s": 6, "q": "¿Qué protocolo recupera la dirección IP?", "opts": ["ARP", "RARP", "ICMP", "SMTP"], "a": 1, "e": "El protocolo RARP recupera la dirección IP de un dispositivo."}, {"n": 45, "s": 6, "q": "En cuanto al propósito, la dirección MAC identifica:", "opts": ["La conexión de una computadora en Internet", "La dirección física de una computadora en Internet", "El proveedor de servicios", "La ruta entre redes"], "a": 1, "e": "La MAC identifica la dirección física de una computadora; la IP identifica la conexión de una computadora en Internet."}, {"n": 46, "s": 6, "q": "La MAC es una dirección hexadecimal de:", "opts": ["32 bits (4 bytes)", "48 bits (6 bytes)", "128 bits (16 bytes)", "64 bits (8 bytes)"], "a": 1, "e": "La MAC es una dirección hexadecimal de 48 bits (6 bytes)."}, {"n": 47, "s": 6, "q": "Las tecnologías que usan la dirección MAC incluyen:", "opts": ["Solo Wi-Fi", "Ethernet, 802.3 CSMA/CD, 802.5 (token ring), 802.11 (Wi-Fi) y ATM", "Solo Bluetooth", "Solo redes cableadas"], "a": 1, "e": "La MAC se usa en Ethernet, 802.3 CSMA/CD, 802.5 (anillo), 802.11 (Wi-Fi) y Asynchronous Transfer Mode (ATM)."}, {"n": 48, "s": 6, "q": "¿La MAC es única a nivel mundial?", "opts": ["No, se repite por país", "Sí, teóricamente, porque se fabrican con numeración exclusiva", "Solo dentro de una misma LAN", "Solo en IPv6"], "a": 1, "e": "Las MAC son teóricamente únicas a nivel mundial porque las tarjetas se fabrican con numeración exclusiva grabada en el hardware."}, {"n": 49, "s": 6, "q": "¿En la mayoría de casos es necesario conocer la MAC para una red doméstica?", "opts": ["Sí, siempre", "No, se usa solo a niveles internos de la red", "Sí, para configurar la IP", "Solo para conectar a Internet"], "a": 1, "e": "En la mayoría de casos no es necesario conocer la MAC ni para montar una red doméstica ni para configurar Internet; se usa a niveles internos."}, {"n": 50, "s": 6, "q": "Un inconveniente de que la MAC sea única es:", "opts": ["Que ralentiza la red", "Si se rompe una tarjeta en un servidor crítico, se necesita otra con la misma MAC", "Que consume más ancho de banda", "Que impide el cifrado"], "a": 1, "e": "Si una tarjeta se rompe en servidores de actuación generalizada, se necesitaría otra con la misma numeración MAC, lo que genera inconvenientes (mitigables con MAC spoofing)."}];
+const THRESH = {};
+let answers={}, instantMode=false, displayList=[...QUESTIONS], onlyWrongView=false, graded=false;
+function letter(i){return["a","b","c","d","e"][i];}
+function renderFilter(){
+  const sel=document.getElementById("filter");
+  Object.entries(SECTIONS).forEach(([k,v])=>{const o=document.createElement("option");o.value=k;o.textContent=v;sel.appendChild(o);});
+  sel.addEventListener("change",render);
+}
+function render(){
+  const quiz=document.getElementById("quiz"); quiz.innerHTML="";
+  const filter=document.getElementById("filter").value;
+  let currentSection=null;
+  let toShow=displayList.filter(q=>filter==="all"||String(q.s)===filter);
+  if(onlyWrongView&&graded) toShow=toShow.filter(q=>answers[q.n]!==undefined&&answers[q.n]!==q.a);
+  toShow.forEach(qd=>{
+    if(qd.s!==currentSection&&filter==="all"){
+      const div=document.createElement("div"); div.className="section-divider"; div.textContent=SECTIONS[qd.s]; quiz.appendChild(div); currentSection=qd.s;
+    }
+    const card=document.createElement("div"); card.className="question"; card.id="q"+qd.n;
+    const h3=document.createElement("h3");
+    const status=answers[qd.n]===undefined?'<span class="badge badge-pending">Sin responder</span>':(graded||instantMode)?(answers[qd.n]===qd.a?'<span class="badge badge-ok">Correcta</span>':'<span class="badge badge-err">Incorrecta</span>'):'<span class="badge badge-pending">Respondida</span>';
+    h3.innerHTML=`Pregunta ${qd.n} ${status}`; card.appendChild(h3);
+    const prompt=document.createElement("div"); prompt.className="prompt"; prompt.textContent=qd.q; card.appendChild(prompt);
+    if(qd.code){const pre=document.createElement("pre");pre.textContent=qd.code;card.appendChild(pre);}
+    const opts=document.createElement("div"); opts.className="options";
+    qd.opts.forEach((txt,idx)=>{
+      const lbl=document.createElement("label"); lbl.className="opt";
+      const radio=document.createElement("input"); radio.type="radio"; radio.name="q"+qd.n; radio.value=idx;
+      if(answers[qd.n]===idx) radio.checked=true;
+      radio.addEventListener("change",()=>{answers[qd.n]=idx; if(instantMode)showFeedback(qd.n); updateStats(); renderItemMarks(qd);});
+      const letterSpan=document.createElement("span"); letterSpan.className="letter"; letterSpan.textContent=letter(idx)+")";
+      const text=document.createElement("span"); text.textContent=txt;
+      lbl.appendChild(radio); lbl.appendChild(letterSpan); lbl.appendChild(text); opts.appendChild(lbl);
+    });
+    card.appendChild(opts);
+    const fb=document.createElement("div"); fb.className="feedback"; fb.id="fb"+qd.n; card.appendChild(fb);
+    quiz.appendChild(card);
+    if(graded||(instantMode&&answers[qd.n]!==undefined)){renderItemMarks(qd); if(answers[qd.n]!==undefined)showFeedback(qd.n);}
+  });
+  if(toShow.length===0) quiz.innerHTML='<div class="question" style="text-align:center;color:var(--muted)">No hay preguntas para mostrar.</div>';
+  updateStats();
+}
+function renderItemMarks(qd){
+  if(!graded&&!instantMode) return; if(answers[qd.n]===undefined) return;
+  const card=document.getElementById("q"+qd.n); if(!card) return;
+  card.querySelectorAll(".opt").forEach((lbl,idx)=>{lbl.classList.remove("correct","incorrect"); if(idx===qd.a)lbl.classList.add("correct"); else if(idx===answers[qd.n])lbl.classList.add("incorrect");});
+  const h3=card.querySelector("h3"); const isOk=answers[qd.n]===qd.a;
+  h3.innerHTML=`Pregunta ${qd.n} `+(isOk?'<span class="badge badge-ok">Correcta</span>':'<span class="badge badge-err">Incorrecta</span>');
+}
+function showFeedback(n){
+  const qd=QUESTIONS.find(q=>q.n===n); const fb=document.getElementById("fb"+n); if(!fb) return;
+  const isOk=answers[n]===qd.a;
+  fb.className="feedback show "+(isOk?"ok":"err");
+  fb.innerHTML=isOk?`✅ <b>Correcto.</b> ${qd.e}`:`❌ <b>Incorrecto.</b> Respuesta: <b>${letter(qd.a)})</b> ${qd.opts[qd.a]}. ${qd.e}`;
+}
+function updateStats(){
+  const answered=Object.keys(answers).length;
+  const correct=Object.entries(answers).filter(([n,a])=>{const q=QUESTIONS.find(x=>x.n===Number(n));return q&&q.a===a;}).length;
+  document.getElementById("answered").textContent=answered;
+  document.getElementById("correct").textContent=correct;
+  document.getElementById("wrong").textContent=answered-correct;
+  document.getElementById("progress").style.width=(answered/QUESTIONS.length*100)+"%";
+}
+function grade(){
+  graded=true;
+  const correct=Object.entries(answers).filter(([n,a])=>{const q=QUESTIONS.find(x=>x.n===Number(n));return q&&q.a===a;}).length;
+  const total=QUESTIONS.length; const pct=Math.round(correct/total*100);
+  let level,cls;
+  if(pct>=90){level="Excelente. Dominás el tema. 🚀";cls="level-elite";}
+  else if(pct>=75){level="Bien. Repasá los que fallaste. 💪";cls="level-good";}
+  else if(pct>=55){level="Justo. Repasá las secciones débiles. 📚";cls="level-mid";}
+  else{level="Volvé a estudiar el material. 🔥";cls="level-bad";}
+  const bySection={};
+  Object.keys(SECTIONS).forEach(s=>bySection[s]={ok:0,total:0});
+  QUESTIONS.forEach(q=>{bySection[q.s].total++;if(answers[q.n]===q.a)bySection[q.s].ok++;});
+  const secHtml=Object.entries(SECTIONS).map(([k,v])=>{const sd=bySection[k];const sPct=sd.total?Math.round(sd.ok/sd.total*100):0;return`<div class="sec-card"><div class="sec-name">${v}</div><div class="sec-score">${sd.ok}/${sd.total} <span style="color:var(--muted);font-size:13px;font-weight:normal">(${sPct}%)</span></div></div>`;}).join("");
+  const res=document.getElementById("result"); res.classList.add("show");
+  res.innerHTML=`<h2>📊 Resultado</h2><div class="score-big">${correct} / ${total} <span style="font-size:24px;color:var(--muted)">(${pct}%)</span></div><div class="score-level ${cls}">${level}</div><div class="by-section">${secHtml}</div><div style="margin-top:14px;color:var(--muted);font-size:14px">Las correctas en verde, las erradas en rojo, con explicación.</div>`;
+  res.scrollIntoView({behavior:"smooth"}); render();
+}
+function reset(){
+  if(!confirm("¿Reiniciar el test? Vas a perder las respuestas.")) return;
+  answers={}; graded=false; onlyWrongView=false;
+  document.getElementById("result").classList.remove("show");
+  displayList=[...QUESTIONS]; render(); window.scrollTo({top:0,behavior:"smooth"});
+}
+function shuffle(){
+  if(graded){if(!confirm("Esto va a reiniciar tus respuestas. ¿Continuar?"))return;answers={};graded=false;}
+  for(let i=displayList.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[displayList[i],displayList[j]]=[displayList[j],displayList[i]];}
+  render();
+}
+document.getElementById("btnSubmit").addEventListener("click",grade);
+document.getElementById("btnReset").addEventListener("click",reset);
+document.getElementById("btnShuffle").addEventListener("click",shuffle);
+document.getElementById("btnInstant").addEventListener("click",()=>{instantMode=!instantMode;document.getElementById("instantState").textContent=instantMode?"ON":"OFF";render();});
+document.getElementById("btnOnlyWrong").addEventListener("click",()=>{if(!graded){alert("Primero calificá el test.");return;}onlyWrongView=true;render();});
+document.getElementById("btnAll").addEventListener("click",()=>{onlyWrongView=false;render();});
+document.getElementById("total").textContent=QUESTIONS.length;
+renderFilter(); render();
+</script>
+</body>
+</html>
